@@ -32,6 +32,7 @@ export interface Requerimiento {
   desFuncion: string;
   descCarreras: string;
   nVacantes: number;
+  procesos: ProcesoRequerimiento[];
 }
 
 export interface Perfil {
@@ -46,3 +47,27 @@ export interface Disciplina {
   perfiles: Perfil[];
 }
 
+export interface Fase {
+  idFase: string,
+  desFase: string
+}
+
+export interface ProcesoRequerimientoId {
+  consecRequerimiento: number;
+  idPerfil: string;
+  idFase: string;
+  consProceso: number;
+}
+
+export interface ProcesoRequerimiento {
+  id?: ProcesoRequerimientoId;
+  consecRequerimiento: number;
+  perfil: Perfil;
+  fase: Fase;
+  consProceso: number;
+  condEmpleado: string;
+  fechaInicio?: Date;
+  fechaFin: Date | null;
+  convocatoria: string;
+  invitacion: string;
+}

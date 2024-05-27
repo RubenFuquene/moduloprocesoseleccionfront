@@ -54,7 +54,8 @@ export default function RequirementForm() {
       salarioMin: Number(salarioMin),
       desFuncion,
       descCarreras,
-      nVacantes: Number(nvacantes)
+      nVacantes: Number(nvacantes),
+      procesos: []
     };
 
     try {

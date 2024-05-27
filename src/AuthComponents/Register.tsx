@@ -76,7 +76,7 @@ export default function Register() {
         empleado: empleadoData,
         tipoCargo: { idTipoCargo: selectedCargo, descTipoCargo: '' },
         fechaInicioCargo: dayjs().format('YYYY-MM-DD'), // Fecha de inicio es hoy
-        descCargo: 'New Hire',
+        descCargo: 'New',
         conseCargo: 0
       };
 

@@ -10,8 +10,8 @@ import WorkIcon from '@mui/icons-material/Work';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { useState, useEffect } from 'react';
-import { MenuItem, Select } from '@mui/material';
-import { Disciplina, Empleado, Perfil, Requerimiento } from '../types';
+import { Chip, MenuItem, Select } from '@mui/material';
+import { Disciplina, Empleado, Perfil, ProcesoRequerimiento, Requerimiento } from '../types';
 import { useAuthStore } from '../ZustandStores/authStore';
 import { useParams } from 'react-router-dom';
 import { useMyRequirementStore } from '../ZustandStores/myRequirementStore';
@@ -30,68 +30,98 @@ export default function EditRequirementFormGeneralAnalist() {
   const [perfiles, setPerfiles] = useState<Perfil[]>([]);
   const [selectedDisciplina, setSelectedDisciplina] = useState('');
   const [selectedPerfil, setSelectedPerfil] = useState('');
+  const [convocatoria, setConvocatoria] = useState('');
+  const [invitacion, setInvitacion] = useState('');
+  const [candidatos, setCandidatos] = useState([]);
 
-  const { user } = useAuthStore();
+  const requerimiento = requerimientos.find(req => req.consecrequerimiento === Number(id));
 
   useEffect(() => {
-    const requerimiento = requerimientos.find(req => req.consecrequerimiento === Number(id));
     if (requerimiento) {
+      console.log(requerimiento.descCarreras);
       setDesFuncion(requerimiento.desFuncion);
       setDescCarreras(requerimiento.descCarreras);
       setNvacantes(requerimiento.nVacantes.toString());
       setSalarioMin(requerimiento.salarioMin ? requerimiento.salarioMin.toString() : '');
       setSalarioMax(requerimiento.salarioMax.toString());
       setSelectedAnalyst(requerimiento.empleadoSeleccionado?.condEmpleado || '');
+      setSelectedPerfil(requerimiento.procesos.length ? requerimiento.procesos[requerimiento.procesos.length - 1].id?.idPerfil || '' : '')
+      setConvocatoria(requerimiento.procesos[2] ? requerimiento.procesos[2].convocatoria || '' : '');
+
+      const fetchCandidatos = async () => {
+        try {
+          const disciplina = disciplinas.find(dis => dis.idDisciplina === selectedDisciplina)
+          const response = await fetch(`http://localhost:8080/candidatos/buscar/${disciplina?.descDisciplina}/${requerimiento.descCarreras}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+      
+          if (!response.ok) {
+            throw new Error('Error al obtener los candidatos');
+          }
+      
+          const data = await response.json();
+          setCandidatos(data);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+      };  
+
+      fetchCandidatos();
     }
+    console.log(requerimiento);
   }, [id, requerimientos]);
+
+  useEffect(() => {
+    if(selectedPerfil)
+    {
+      fetch(`http://localhost:8080/perfiles/perfil/${selectedPerfil}/disciplina`)
+        .then(response => response.json())
+        .then(data => setSelectedDisciplina(data.idDisciplina))
+        .catch(error => console.error('Error fetching analysts:', error)); 
+    }
+  }, [selectedPerfil]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Buscar el empleado seleccionado en analysts
-    const empleadoSeleccionado = analysts.find(analyst => analyst.condEmpleado === selectedAnalyst);
-
-    const requerimiento: Requerimiento = {
-      consecrequerimiento: 0, // Este valor será asignado por el backend
-      empleado: {
-        condEmpleado: user.condEmpleado,
-        nomEmpleado: '',
-        apelEmpleado: '',
-        correo: '',
-        fechaNac: '',
-        fechaIngre: ''
+    // Construir el objeto de proceso de requerimiento
+    const procesoRequerimiento: ProcesoRequerimiento = {
+      id: {
+        consecRequerimiento: requerimiento?.consecrequerimiento || 0,
+        idPerfil: selectedPerfil,
+        idFase: "0" + ((requerimiento?.procesos?.length || 0) + 1).toString(),
+        consProceso: 0, // Este valor será asignado por el backend
       },
-      empleadoSeleccionado: empleadoSeleccionado ? {
-        condEmpleado: empleadoSeleccionado.condEmpleado,
-        nomEmpleado: '',
-        apelEmpleado: '',
-        correo: '',
-        fechaNac: '',
-        fechaIngre: ''
-      } : null,
-      fechaRequerimiento: new Date(), // Fecha y hora actual
-      salarioMax: Number(salarioMax),
-      salarioMin: Number(salarioMin),
-      desFuncion,
-      descCarreras,
-      nVacantes: Number(nvacantes)
+      condEmpleado: requerimiento?.empleadoSeleccionado?.condEmpleado || '',
+      fechaInicio: undefined,
+      fechaFin: null,
+      convocatoria: convocatoria,
+      invitacion: '',
+      consecRequerimiento: 0,
+      perfil: undefined,
+      fase: undefined,
+      consProceso: 0
     };
 
     try {
-      const response = await fetch('http://localhost:8080/requerimientos', {
+      // Realizar la solicitud para guardar el nuevo proceso de requerimiento
+      const response = await fetch('http://localhost:8080/procesos-requerimiento', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requerimiento),
+        body: JSON.stringify(procesoRequerimiento),
       });
 
       if (!response.ok) {
-        throw new Error('Error al guardar el requerimiento');
+        throw new Error('Error al guardar el proceso de requerimiento');
       }
 
       const data = await response.json();
-      console.log('Requerimiento guardado exitosamente', data);
+      console.log('Proceso de requerimiento guardado exitosamente', data);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -138,6 +168,17 @@ export default function EditRequirementFormGeneralAnalist() {
         <Typography component="h1" variant="h5">
           Procesar Requerimiento
         </Typography>
+        <Grid container spacing={1} justifyContent="center">
+          {[...Array(7).keys()].map((index) => (
+            <Grid item key={index}>
+              <Chip
+                label={`Fase ${index + 1}`}
+                color={index < (requerimiento?.procesos.length || 0) ? "primary" : "default"}
+                variant={index < (requerimiento?.procesos.length || 0) ? "filled" : "outlined"}
+              />
+            </Grid>
+          ))}
+        </Grid>
         <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 3 }}>
           <Grid container spacing={2}>
             <Grid item xs={12}>
@@ -253,6 +294,34 @@ export default function EditRequirementFormGeneralAnalist() {
                 ))}
               </Select>
             </Grid>
+            {requerimiento?.procesos.length >= 2 && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  id="convocatoria"
+                  label="Convocatoria"
+                  name="convocatoria"
+                  value={convocatoria}
+                  onChange={(e) => setConvocatoria(e.target.value)}
+                />
+              </Grid>
+            )}
+            {requerimiento?.procesos.length >= 3 && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  id="invitacion"
+                  label="Invitación"
+                  name="invitacion"
+                  value={invitacion}
+                  onChange={(e) => setInvitacion(e.target.value)}
+                />
+              </Grid>
+            )}
           </Grid>
           <Button
             type="submit"
